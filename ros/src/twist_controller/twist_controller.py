@@ -21,7 +21,7 @@ class Controller(object):
                  max_steer_angle,
                  min_speed=0.1):
         # PID controller for throttle and braking
-        self.tb_pid = PID(kp=0.1, ki=0.004, kd=2.0, mn=decel_limit, mx=accel_limit)
+        self.tb_pid = PID(kp=0.1, ki=0.004, kd=2.0, mn=-1.0, mx=accel_limit)
         # Constants that are relevant to computing the final throttle/brake value
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
