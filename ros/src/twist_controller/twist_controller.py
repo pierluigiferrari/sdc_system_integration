@@ -1,7 +1,9 @@
 import time
+import rospy
 
 from pid import PID
 from yaw_controller import YawController
+from lowpass import LowPassFilter
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -21,7 +23,9 @@ class Controller(object):
                  max_steer_angle,
                  min_speed=0.1):
         # PID controller for throttle and braking
-        self.tb_pid = PID(kp=0.1, ki=0.004, kd=2.0, mn=-1.0, mx=accel_limit)
+        self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
+        # Low pass filter to smooth out throttle/braking actuations.
+        self.tb_lpf = LowPassFilter(0.1)
         # Constants that are relevant to computing the final throttle/brake value
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
@@ -57,12 +61,16 @@ class Controller(object):
                 self.last_time = this_time
             # Compute the raw throttle/braking value.
             tb = self.tb_pid.step(error=(current_linear_velocity - target_linear_velocity), sample_time=sample_time)
-            # Scale the raw braking value.
-            if tb < 0: # We're braking.
+            # Smoothen it.
+            tb = self.tb_lpf.filt(tb)
+            rospy.loginfo("throttle/braking PID value: %s, target_linear_velocity: %s, current_linear_velocity: %s", tb, target_linear_velocity, current_linear_velocity)
+            # Scale it.
+            if tb < -self.brake_deadband: # We're braking.
                 # Convert the raw braking value to torque in Nm (Newton-meters).
                 brake = self.braking_constant * tb
-                if brake < -self.brake_deadband:
-                    brake = 0
+                throttle = 0
+            elif tb < 0: # We want to slow down, but don't need to brake actively in order to do so.
+                brake = 0
                 throttle = 0
             else: # We're accelerating.
                 throttle = tb
