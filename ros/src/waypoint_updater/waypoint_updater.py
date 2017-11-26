@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 from tf.transformations import euler_from_quaternion
 
 import math
@@ -30,9 +31,12 @@ class WaypointUpdater(object):
         rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        self.sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
+
+        rospy.Subscriber('/traffic_waypoint',Int32, self.traffic_cb)
+        rospy.Subscriber('/current_velocity',TwistStamped, self.velocity_cb)
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
@@ -43,26 +47,59 @@ class WaypointUpdater(object):
         self.waypoints = None
         self.next_waypoint = None
 
+        self.tl_waypoint = -1
+        self.ego_vel = None
+
+        stopping = False
+        ref_vel = 11.11111
+
         while (self.waypoints is None) or (self.ego_pose is None):
             time.sleep(0.05)
 
         # Publish the final waypoints.
         while not rospy.is_shutdown():
             self.next_waypoint = self.get_next_waypoint()
+            dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
+            if self.tl_waypoint > 0 and dist1 < 100:
+                if stopping == False:
+                    stopping = True
+                    vel = self.ego_vel #self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint])
+                    nr_wps = self.tl_waypoint - self.next_waypoint
+                    if nr_wps > 0: #to avoid division by zero
+                        slowdown = vel / float(nr_wps)
+                    else:
+                        slowdown = 0
+                    for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
+                        vel -= slowdown
+                        #vel = 0
+                        if vel < 3.:
+                            vel = 0.
+                        wp.twist.twist.linear.x = vel
+                        rospy.loginfo(vel)
+
+            else:
+                stopping = False
+                for wp in range(len(self.waypoints.waypoints)):
+                    self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel)
             final_waypoints = Lane()
             final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
             self.final_waypoints_pub.publish(final_waypoints)
             self.rate.sleep()
 
+    def velocity_cb(self, msg):
+        self.ego_vel = msg.twist.linear.x
+
     def pose_cb(self, msg):
         self.ego_pose = msg.pose
 
     def waypoints_cb(self, waypoints):
+        rospy.loginfo("waypoints dtype: %s", type(waypoints))
+        rospy.loginfo("waypoints.waypoints[0] dtype: %s", type(waypoints.waypoints[0]))
         self.waypoints = waypoints
+        self.sub2.unregister()
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
-        pass
+        self.tl_waypoint = msg.data
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
