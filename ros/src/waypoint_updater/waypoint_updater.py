@@ -58,8 +58,6 @@ class WaypointUpdater(object):
         self.ego_pose = msg.pose
 
     def waypoints_cb(self, waypoints):
-        rospy.loginfo("waypoints dtype: %s", type(waypoints))
-        rospy.loginfo("waypoints.waypoints[0] dtype: %s", type(waypoints.waypoints[0]))
         self.waypoints = waypoints
 
     def traffic_cb(self, msg):
