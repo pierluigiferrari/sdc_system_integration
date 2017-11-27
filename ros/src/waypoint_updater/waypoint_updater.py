@@ -88,7 +88,7 @@ class WaypointUpdater(object):
                         for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                             wp.twist.twist.linear.x = vel
 
-            if self.tl_waypoint < 0 and self.stopping == True:
+            if self.tl_waypoint < 0 and self.stopping == True and dist1 < 25:
                 self.stopping = False
                 for wp in range(len(self.waypoints.waypoints)):
                     self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel)
