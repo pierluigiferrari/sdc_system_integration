@@ -11,6 +11,7 @@ import tf
 import cv2
 import yaml
 import math
+import threading
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -186,6 +187,15 @@ class TLDetector(object):
             state = light.state #Comment once classifier works
             #state = self.get_light_state(light) #Uncomment once classifier works
             return light_wp, state
+
+        encoding = self.camera_image.encoding
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, encoding)
+        cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+    
+        print("start get_classifiction")
+        state = self.light_classifier.get_classification(cv_image)
+        print("traffic light state: ", state)
+        
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
