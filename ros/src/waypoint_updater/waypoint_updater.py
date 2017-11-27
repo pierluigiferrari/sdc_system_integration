@@ -61,11 +61,11 @@ class WaypointUpdater(object):
         while not rospy.is_shutdown():
             self.next_waypoint = self.get_next_waypoint()
             vel = self.ego_vel #self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint])
-            
             if self.tl_waypoint > 0:
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
-                if dist1 < 120 and self.stopping == False:
+                if self.stopping == False and dist1 < 100:
                     self.stopping = True
+                    vel = self.ego_vel #self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint])
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
                         slowdown = vel / float(nr_wps)
@@ -73,23 +73,23 @@ class WaypointUpdater(object):
                         slowdown = 0
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                         vel -= slowdown
-                        #vel = 0
-                        if vel < 2.:
-                            vel = -10
+                        #vel = -10
+                        if vel < .5:
+                            vel = 0
                         wp.twist.twist.linear.x = vel
-                    #rospy.loginfo(vel)
-                if self.stopping == True and vel < 2.0: #Added creep feat
+                        #rospy.loginfo(vel)
+                if self.stopping == True and self.ego_vel < 2.0: #Added creep feat
                     if dist1 > 5:
                         vel = 0.9
                         for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                             wp.twist.twist.linear.x = vel
                     else:
-                        vel = 0.0
+                        vel = 0.
                         for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                             wp.twist.twist.linear.x = vel
-                    #rospy.loginfo(vel)
+                    #rospy.loginfo(dist1)
 
-            if self.tl_waypoint < 0 and self.stopping == True and (dist1 < 25 or dist1 > 120):
+            if self.tl_waypoint < 0 and self.stopping == True:
                 self.stopping = False
                 for wp in range(len(self.waypoints.waypoints)):
                     self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel)
