@@ -174,10 +174,12 @@ class TLDetector(object):
             closestLen = 10000000; #large number
             for wp in self.stop_line_waypoints:
                 dist = wp - car_position
+                if(dist <= 0):
+                    light_wp = self.stop_line_waypoints[0]
                 if(dist < closestLen and dist > 0):
                     closestLen = dist;
                     light_wp = wp;
-                    light = self.lights[self.stop_line_waypoints.index(wp)]
+            light = self.lights[self.stop_line_waypoints.index(light_wp)]
 
 
         #TODO find the closest visible traffic light (if one exists)
