@@ -21,7 +21,7 @@ class Controller(object):
                  steer_ratio,
                  max_lat_accel,
                  max_steer_angle,
-                 min_speed=0.1):
+                 min_speed=0.0):
         # PID controller for throttle and braking
         self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
