@@ -43,6 +43,9 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = []
 
+        self.stop_line_waypoints = []
+        self.stop_line_positions = []
+
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         self.sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
@@ -69,9 +72,6 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-
-        self.stop_line_waypoints = []
-        self.stop_line_positions = []
 
         rospy.spin()
 
@@ -168,7 +168,7 @@ class TLDetector(object):
         if self.waypoints == None:
             return -1, TrafficLight.UNKNOWN
         light = None
-        
+
         if(self.pose):
             car_position = ClosestWaypoint(self.pose.pose.position.x, self.pose.pose.position.y, self.waypoints.waypoints)
 
@@ -191,11 +191,11 @@ class TLDetector(object):
         encoding = self.camera_image.encoding
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, encoding)
         cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-    
+
         print("start get_classifiction")
         state = self.light_classifier.get_classification(cv_image)
         print("traffic light state: ", state)
-        
+
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
