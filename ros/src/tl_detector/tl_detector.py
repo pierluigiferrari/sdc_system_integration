@@ -184,8 +184,8 @@ class TLDetector(object):
         #TODO find the closest visible traffic light (if one exists)
 
         if light:
-            state = light.state #Comment once classifier works
-            #state = self.get_light_state(light) #Uncomment once classifier works
+            #state = light.state #Comment once classifier works
+            state = self.get_light_state(light) #Uncomment once classifier works
             return light_wp, state
 
         encoding = self.camera_image.encoding
