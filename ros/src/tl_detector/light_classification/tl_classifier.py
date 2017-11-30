@@ -15,11 +15,13 @@ from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
 
 from utils import label_map_util
+from utils import visualization_utils as vis_util
 
 class TLClassifier(object):
     def __init__(self):
 
         #### Code adapted from TensorflowModel API => https://github.com/tensorflow/models/blob/master/research/object_detection/object_detection_tutorial.ipynb
+
 
         self.current_light = TrafficLight.UNKNOWN  # Pass to network if nothing is detected.
         current_wd = os.path.dirname(os.path.realpath(__file__))
@@ -28,7 +30,7 @@ class TLClassifier(object):
         PATH_GRAPH = current_wd + "/frozen_graph/"
         ssd_model = True
 
-        rospy.loginfo('Frozen graph directory: {}'.format(PATH_GRAPH))
+        #rospy.loginfo('Frozen graph directory: {}'.format(PATH_GRAPH))
 
         if ssd_model:
             PATH_TO_CKPT = os.path.join(PATH_GRAPH, 'ssd_inception_coco_021.pb')
@@ -47,8 +49,8 @@ class TLClassifier(object):
         #Optimizing model
 
         self.config = tf.ConfigProto()
-        #self.config.gpu_options.allow_growth = True
-        #self.config.gpu_options.per_process_gpu_memory_fraction = 1
+        self.config.gpu_options.allow_growth = True
+        self.config.gpu_options.per_process_gpu_memory_fraction = 1
         jit_level = tf.OptimizerOptions.ON_1
         self.config.graph_options.optimizer_options.global_jit_level = jit_level
 
@@ -57,6 +59,7 @@ class TLClassifier(object):
         categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
         self.category_index = label_map_util.create_category_index(categories)
 
+        
         self.detection_graph = tf.Graph()
 
         with self.detection_graph.as_default():
@@ -94,9 +97,15 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
+
         img_exp = np.expand_dims(image, axis=0)
 
         time0 = time.time()
+
+        #img_dir = os.path.abspath(os.path.join(os.getcwd(),"images"))
+        #img_name = os.path.join(img_dir, "%12i.jpg" % time0)
+        #img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)        
+        #cv2.imwrite(img_name, img)
 
         # Detection.
         with self.detection_graph.as_default():
@@ -112,24 +121,49 @@ class TLClassifier(object):
         boxes = np.squeeze(boxes)
         scores = np.squeeze(scores)
         classes = np.squeeze(classes).astype(np.int32)
+     
+        vis_util.visualize_boxes_and_labels_on_image_array(
+                image, boxes, classes, scores,
+                self.category_index,
+                use_normalized_coordinates=True,
+                line_thickness=6)
+        
+        #img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        #img_name = os.path.join(img_dir, "%12i_vis.jpg" % time0)    
+        #cv2.imwrite(img_name, img)
 
 
         min_score_thresh = .50
+        max_score = 0
+        max_id = 4
+        max_name = ""
         for i in range(boxes.shape[0]):
             if scores is None or scores[i] > min_score_thresh:
+                if scores[i] > max_score:
+                    class_name = self.category_index[classes[i]]['name']
+                    class_id = self.category_index[classes[i]]['id']  # if needed
+                    max_name = class_name                    
+                    max_score = scores[i]
+                    max_id = i
 
-                class_name = self.category_index[classes[i]]['name']
-                class_id = self.category_index[classes[i]]['id']  # if needed
-                print('Box #: {}'.format(i))
-                print('{}'.format(class_name))
-                print('{}'.format(class_id))
-                print('{}'.format(scores[i]))
+        if max_name == 'Red':
+            self.current_light = TrafficLight.RED
+        elif max_name == 'Green':
+            self.current_light = TrafficLight.GREEN
+        elif max_name == 'Yellow':
+            self.current_light = TrafficLight.YELLOW
+        else:
+            self.current_light = TrafficLight.UNKNOWN
 
-                if class_name == 'Red':
-                    self.current_light = TrafficLight.RED
-                elif class_name == 'Green':
-                    self.current_light = TrafficLight.GREEN
-                elif class_name == 'Yellow':
-                    self.current_light = TrafficLight.YELLOW
+        print('Box #: {}'.format(max_id))
+        print('{}'.format(max_name))
+        print('{}'.format(max_score))
 
         return self.current_light
+
+if __name__ == '__main__':
+    try:
+        TLClassifier()
+    except rospy.ROSInterruptException:
+        rospy.logerr('Could not start light_classifier node.')
+
