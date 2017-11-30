@@ -153,7 +153,7 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
@@ -186,14 +186,12 @@ class TLDetector(object):
 
         #TODO find the closest visible traffic light (if one exists)
 
-        #if light:
-        #    #state = light.state #Comment once classifier works
-        #    state = self.get_light_state(light) #Uncomment once classifier works
-        #    return light_wp, state
-
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
-        state = self.light_classifier.get_classification(cv_image)
-        print("traffic light state: ", state)
+        if light:
+            #state = light.state #Comment once classifier works
+            state = self.get_light_state(light) #Uncomment once classifier works
+            print("traffic light state: ", state)
+            return light_wp, state
+        
 
         return -1, TrafficLight.UNKNOWN
 
