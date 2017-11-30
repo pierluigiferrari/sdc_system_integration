@@ -5,13 +5,12 @@ from geometry_msgs.msg import PoseStamped, Pose
 from styx_msgs.msg import TrafficLightArray, TrafficLight
 from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+from cv_bridge import CvBridge, CvBridgeError
 from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
 import math
-import threading
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -43,6 +42,13 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = []
 
+        self.light_classifier = TLClassifier()
+
+        self.state = TrafficLight.UNKNOWN
+        self.last_state = TrafficLight.UNKNOWN
+        self.last_wp = -1
+        self.state_count = 0
+
         self.stop_line_waypoints = []
         self.stop_line_positions = []
 
@@ -65,13 +71,9 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
-        self.listener = tf.TransformListener()
 
-        self.state = TrafficLight.UNKNOWN
-        self.last_state = TrafficLight.UNKNOWN
-        self.last_wp = -1
-        self.state_count = 0
+        self.listener = tf.TransformListener()
+        print("Listening")
 
         rospy.spin()
 
@@ -101,6 +103,7 @@ class TLDetector(object):
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
+        print("state2: ", state)
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -118,7 +121,7 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(light_wp))
         else:
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-        self.state_count += 1
+            self.state_count += 1
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
@@ -183,16 +186,12 @@ class TLDetector(object):
 
         #TODO find the closest visible traffic light (if one exists)
 
-        if light:
-            #state = light.state #Comment once classifier works
-            state = self.get_light_state(light) #Uncomment once classifier works
-            return light_wp, state
+        #if light:
+        #    #state = light.state #Comment once classifier works
+        #    state = self.get_light_state(light) #Uncomment once classifier works
+        #    return light_wp, state
 
-        encoding = self.camera_image.encoding
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, encoding)
-        cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-
-        print("start get_classifiction")
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
         state = self.light_classifier.get_classification(cv_image)
         print("traffic light state: ", state)
 
