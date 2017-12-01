@@ -52,20 +52,23 @@ class WaypointUpdater(object):
 
         self.stopping = False
 
-        ref_vel = 11.11111
-
         while (self.waypoints is None) or (self.ego_pose is None):
             time.sleep(0.05)
+
+        #Save the reference velocities
+        ref_vel = []
+        for wp in self.waypoints.waypoints:
+            ref_vel.append(self.get_waypoint_velocity(wp))
 
         # Publish the final waypoints.
         while not rospy.is_shutdown():
             self.next_waypoint = self.get_next_waypoint()
-            vel = self.ego_vel #self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint])
+            vel = self.ego_vel
             if self.tl_waypoint > 0:
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
+                #If traffic light is red and less than 100 m ahead, slowdown and stop
                 if self.stopping == False and dist1 < 100:
                     self.stopping = True
-                    vel = self.ego_vel #self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint])
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
                         slowdown = vel / float(nr_wps)
@@ -77,8 +80,8 @@ class WaypointUpdater(object):
                         if vel < .5:
                             vel = 0
                         wp.twist.twist.linear.x = vel
-                        #rospy.loginfo(vel)
-                if self.stopping == True and self.ego_vel < 2.0: #Added creep feat
+                #Creep feature added to compensate slowdown issue
+                if self.stopping == True and self.ego_vel < 2.0:
                     if dist1 > 5:
                         vel = 0.9
                         for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
@@ -87,13 +90,12 @@ class WaypointUpdater(object):
                         vel = 0.
                         for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                             wp.twist.twist.linear.x = vel
-                    #rospy.loginfo(dist1)
 
+            #Traffic light is green, go back to reference velocity
             if self.tl_waypoint < 0 and self.stopping == True:
                 self.stopping = False
                 for wp in range(len(self.waypoints.waypoints)):
-                    self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel)
-                #rospy.loginfo(ref_vel)
+                    self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel[wp])
 
             final_waypoints = Lane()
             final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
