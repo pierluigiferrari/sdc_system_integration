@@ -133,7 +133,7 @@ class TLClassifier(object):
         #cv2.imwrite(img_name, img)
 
 
-        min_score_thresh = .50
+        min_score_thresh = .75
         max_score = 0
         max_id = 4
         max_name = ""
