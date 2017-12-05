@@ -33,7 +33,7 @@ class TLClassifier(object):
         #rospy.loginfo('Frozen graph directory: {}'.format(PATH_GRAPH))
 
         if ssd_model:
-            PATH_TO_CKPT = os.path.join(PATH_GRAPH, 'ssd_inception_coco_021.pb')
+            PATH_TO_CKPT = os.path.join(PATH_GRAPH, 'ssd_inception_coco_frz_ynb_C_021.pb')
         else:
             PATH_TO_CKPT = os.path.join(PATH_GRAPH, 'faster_rcnn_resnet101_coco_020.pb')
 
