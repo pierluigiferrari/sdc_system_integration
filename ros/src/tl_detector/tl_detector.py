@@ -12,7 +12,7 @@ import cv2
 import yaml
 import math
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 1
 
 def distance_between_points(x1, y1, x2, y2):
     return math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1))
@@ -112,16 +112,20 @@ class TLDetector(object):
         used.
         '''
         if self.state != state:
-            self.state_count = 0
+            self.state_count = 1
             self.state = state
+            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub if: %s',self.state_count, format(self.last_wp))
         elif self.state_count >= STATE_COUNT_THRESHOLD:
             self.last_state = self.state
-            light_wp = light_wp if state == TrafficLight.RED else -1
+            #light_wp = light_wp if state == TrafficLight.RED else -1
+            light_wp = -1 if state == TrafficLight.GREEN else light_wp
             self.last_wp = light_wp
-            self.upcoming_red_light_pub.publish(Int32(light_wp))
+            self.upcoming_red_light_pub.publish(Int32(self.last_wp))
+            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub elif: %s',self.state_count, format(self.last_wp))
         else:
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
             self.state_count += 1
+            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub else: %s',self.state_count, format(self.last_wp))
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
