@@ -24,7 +24,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 40 # Number of waypoints we will publish. You can change this number
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -62,12 +62,14 @@ class WaypointUpdater(object):
 
         # Publish the final waypoints.
         while not rospy.is_shutdown():
+            rospy.loginfo("self.stopping: %s, self.ego_vel: %s", self.stopping,self.ego_vel)
             self.next_waypoint = self.get_next_waypoint()
             vel = self.ego_vel
             if self.tl_waypoint > 0:
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
                 #If traffic light is red and less than 100 m ahead, slowdown and stop
-                if self.stopping == False and dist1 < 100:
+                rospy.loginfo("dist1: %s, nr_wps: %s", dist1,(self.tl_waypoint - self.next_waypoint))
+                if self.stopping == False and dist1 < 40:
                     self.stopping = True
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
@@ -76,20 +78,24 @@ class WaypointUpdater(object):
                         slowdown = 0
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
                         vel -= slowdown
-                        #vel = -10
-                        if vel < .5:
+                        if vel < .1:
                             vel = 0
                         wp.twist.twist.linear.x = vel
-                #Creep feature added to compensate slowdown issue
-                if self.stopping == True and self.ego_vel < 2.0:
-                    if dist1 > 5:
-                        vel = 0.9
-                        for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
-                            wp.twist.twist.linear.x = vel
-                    else:
-                        vel = 0.
-                        for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
-                            wp.twist.twist.linear.x = vel
+                #Feature added to start the car with red lights on and staying with v = 0
+                if self.stopping == True and self.ego_vel < 0.1 and dist1 > 1:
+                    nr_wps = self.tl_waypoint - self.next_waypoint
+                    nr_wps_1 = int(nr_wps/2)
+                    speedup = 0.35
+                    for wp in self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+nr_wps_1]:
+                       vel +=speedup
+                       wp.twist.twist.linear.x = vel
+                    for wp in self.waypoints.waypoints[self.next_waypoint+nr_wps_1+1:self.tl_waypoint-2]:
+                       vel -=speedup
+                       wp.twist.twist.linear.x = vel 
+                    for wp in self.waypoints.waypoints[self.tl_waypoint-1:self.tl_waypoint]:
+                       vel =0
+                       wp.twist.twist.linear.x = vel                    
+
 
             #Traffic light is green, go back to reference velocity
             if self.tl_waypoint < 0 and self.stopping == True:
