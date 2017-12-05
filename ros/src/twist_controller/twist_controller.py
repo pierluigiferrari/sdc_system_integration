@@ -21,21 +21,22 @@ class Controller(object):
                  steer_ratio,
                  max_lat_accel,
                  max_steer_angle,
-                 min_speed=0.0):
+                 min_speed=0.1):
         # PID controller for throttle and braking
-        self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
+        #self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
+        self.tb_pid = PID(kp=5., ki=0.00, kd=0.1, mn=decel_limit, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
-        self.tb_lpf = LowPassFilter(0.1)
+        self.tb_lpf = LowPassFilter(0.2,1.0)
         # Constants that are relevant to computing the final throttle/brake value
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
         self.brake_deadband = brake_deadband
-        self.decel_limit = -decel_limit
+        self.decel_limit = decel_limit
         self.accel_limit = accel_limit
         self.wheel_radius = wheel_radius
         # Compute the braking conversion constant according to the formula `braking_torque = total_mass * max_deceleration * wheel_radius`.
         # `self.tb_pid` outputs barking values in `[-1,0]`, which will then be scaled by the constant below.
-        self.braking_constant = (self.vehicle_mass + self.fuel_capacity * GAS_DENSITY) * self.decel_limit * self.wheel_radius
+        self.braking_constant = (self.vehicle_mass + self.fuel_capacity * GAS_DENSITY) * self.wheel_radius
         # Record the time of the last control computation.
         self.last_time = None
         # Controller for steering angle
@@ -60,18 +61,24 @@ class Controller(object):
                 sample_time = this_time - self.last_time
                 self.last_time = this_time
             # Compute the raw throttle/braking value.
+            #tb = self.tb_pid.step(error=(current_linear_velocity - target_linear_velocity), sample_time=sample_time)
             tb = self.tb_pid.step(error=(current_linear_velocity - target_linear_velocity), sample_time=sample_time)
+            rospy.loginfo('tb: {}'.format(tb))
             # Smoothen it.
             tb = self.tb_lpf.filt(tb)
             rospy.loginfo("throttle/braking PID value: %s, target_linear_velocity: %s, current_linear_velocity: %s", tb, target_linear_velocity, current_linear_velocity)
             # Scale it.
-            if tb < -self.brake_deadband: # We're braking.
+#            if tb < -self.brake_deadband: # We're braking.
+            if target_linear_velocity== 0.0 and current_linear_velocity < 1.0:
+                brake = abs(self.braking_constant * 1.0)
+                throttle = 0
+            elif tb < 0: # We're braking.
                 # Convert the raw braking value to torque in Nm (Newton-meters).
-                brake = self.braking_constant * tb
+                brake = abs(self.braking_constant * tb)
                 throttle = 0
-            elif tb < 0: # We want to slow down, but don't need to brake actively in order to do so.
+            elif target_linear_velocity > 10.0 and current_linear_velocity < 1.5: # We want to accelerate as much as we can
                 brake = 0
-                throttle = 0
+                throttle = 1.0
             else: # We're accelerating.
                 throttle = tb
                 brake = 0
