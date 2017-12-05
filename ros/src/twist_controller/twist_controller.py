@@ -24,7 +24,7 @@ class Controller(object):
                  min_speed=0.1):
         # PID controller for throttle and braking
         #self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
-        self.tb_pid = PID(kp=5., ki=0.00, kd=0.1, mn=decel_limit, mx=accel_limit)
+        self.tb_pid = PID(kp=1., ki=0.001, kd=0.01, mn=decel_limit, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
         self.tb_lpf = LowPassFilter(0.2,1.0)
         # Constants that are relevant to computing the final throttle/brake value
