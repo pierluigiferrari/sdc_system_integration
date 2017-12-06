@@ -1,5 +1,6 @@
 import time
 import rospy
+import math
 
 from pid import PID
 from yaw_controller import YawController
@@ -24,7 +25,7 @@ class Controller(object):
                  min_speed=0.1):
         # PID controller for throttle and braking
         #self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
-        self.tb_pid = PID(kp=1., ki=0.001, kd=0.01, mn=decel_limit, mx=accel_limit)
+        self.tb_pid = PID(kp=0.7, ki=0.01, kd=0.01, mn=decel_limit, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
         self.tb_lpf = LowPassFilter(0.2,1.0)
         # Constants that are relevant to computing the final throttle/brake value
@@ -38,7 +39,7 @@ class Controller(object):
         # `self.tb_pid` outputs barking values in `[-1,0]`, which will then be scaled by the constant below.
         self.braking_constant = (self.vehicle_mass + self.fuel_capacity * GAS_DENSITY) * self.wheel_radius
         # Record the time of the last control computation.
-        self.last_time = None
+        self.last_time =  None
         # Controller for steering angle
         self.yaw_controller = YawController(wheel_base=wheel_base,
                                             steer_ratio=steer_ratio,
@@ -60,17 +61,16 @@ class Controller(object):
                 this_time = time.time()
                 sample_time = this_time - self.last_time
                 self.last_time = this_time
+
+
             # Compute the raw throttle/braking value.
-            #tb = self.tb_pid.step(error=(current_linear_velocity - target_linear_velocity), sample_time=sample_time)
             tb = self.tb_pid.step(error=(current_linear_velocity - target_linear_velocity), sample_time=sample_time)
-            rospy.loginfo('tb: {}'.format(tb))
             # Smoothen it.
             tb = self.tb_lpf.filt(tb)
-            rospy.loginfo("throttle/braking PID value: %s, target_linear_velocity: %s, current_linear_velocity: %s", tb, target_linear_velocity, current_linear_velocity)
+            #rospy.loginfo("throttle/braking PID value: %s, target_linear_velocity: %s, current_linear_velocity: %s", tb, target_linear_velocity, current_linear_velocity)
             # Scale it.
-#            if tb < -self.brake_deadband: # We're braking.
             if target_linear_velocity== 0.0 and current_linear_velocity < 1.0:
-                brake = abs(self.braking_constant * 1.0)
+                brake = abs(self.braking_constant * 5.0)
                 throttle = 0
             elif tb < 0: # We're braking.
                 # Convert the raw braking value to torque in Nm (Newton-meters).
