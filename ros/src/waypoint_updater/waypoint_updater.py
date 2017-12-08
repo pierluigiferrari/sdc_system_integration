@@ -71,11 +71,11 @@ class WaypointUpdater(object):
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
                 #If traffic light is red and less than 40m ahead, slowdown and stop
                 
-                if self.stopping == False and 15 < dist1 < 40:
+                if self.stopping == False and 15 < dist1 < 50:
                     self.stopping = True
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
-                        slowdown = vel / float(nr_wps)
+                        slowdown = vel / float(nr_wps-2)
                     else:
                         slowdown = 0
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
@@ -83,7 +83,7 @@ class WaypointUpdater(object):
                         if vel < .1:
                             vel = 0
                         wp.twist.twist.linear.x = vel
-                    for wp in self.waypoints.waypoints[self.tl_waypoint-3:self.tl_waypoint]:
+                    for wp in self.waypoints.waypoints[self.tl_waypoint-5:self.tl_waypoint]:
                        vel =0
                        wp.twist.twist.linear.x = vel
                 #Feature added to start the car with red lights on and staying with v = 0
@@ -93,15 +93,13 @@ class WaypointUpdater(object):
                     speedup = 0.35
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+nr_wps_1]:
                         vel +=speedup
-#                        vel = 10
                         wp.twist.twist.linear.x = vel
                     for wp in self.waypoints.waypoints[self.next_waypoint+nr_wps_1+1:self.tl_waypoint]:
                         vel -=speedup
-#                       vel = 0
                         if vel < .1:
                             vel = 0
                         wp.twist.twist.linear.x = vel 
-                    for wp in self.waypoints.waypoints[self.tl_waypoint-1:self.tl_waypoint]:
+                    for wp in self.waypoints.waypoints[self.tl_waypoint-5:self.tl_waypoint]:
                         vel =0
                         wp.twist.twist.linear.x = vel                    
 

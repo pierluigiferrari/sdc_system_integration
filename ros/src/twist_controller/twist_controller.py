@@ -25,7 +25,7 @@ class Controller(object):
                  min_speed=0.1):
         # PID controller for throttle and braking
         #self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
-        self.tb_pid = PID(kp=0.7, ki=0.01, kd=0.01, mn=decel_limit, mx=accel_limit)
+        self.tb_pid = PID(kp=1.7, ki=0.01, kd=0.01, mn=decel_limit, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
         self.tb_lpf = LowPassFilter(0.2,1.0)
         # Constants that are relevant to computing the final throttle/brake value
@@ -74,7 +74,7 @@ class Controller(object):
                 throttle = 0
             elif tb < 0: # We're braking.
                 # Convert the raw braking value to torque in Nm (Newton-meters).
-                brake = abs(self.braking_constant * tb)
+                brake = abs(self.braking_constant * 2*tb)
                 throttle = 0
             elif target_linear_velocity > 10.0 and current_linear_velocity < 1.5: # We want to accelerate as much as we can
                 brake = 0
