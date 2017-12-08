@@ -9,12 +9,17 @@ from flask import Flask, render_template
 from bridge import Bridge
 from conf import conf
 
-#sio = socketio.Server()
+sio = socketio.Server()
 app = Flask(__name__)
 msgs = []
-
-eventlet.monkey_patch()
-sio = socketio.Server(async_mode='eventlet')
+#
+# JLM: Changed to only send the latest message for each topic, rather
+# than queuing out of date messages. Based on
+# https://github.com/amakurin/CarND-Capstone/commit/9809bc60d51c06174f8c8bfe6c40c88ec1c39d50
+#
+#eventlet.monkey_patch()
+#sio = socketio.Server(async_mode='eventlet')
+#msgs = {}
 
 
 dbw_enable = False
@@ -26,7 +31,8 @@ def connect(sid, environ):
 def send(topic, data):
     s = 1
     msgs.append((topic, data))
-    #sio.emit(topic, data=json.dumps(data), skip_sid=True)
+    ##sio.emit(topic, data=json.dumps(data), skip_sid=True)
+    #msgs[topic] = data
 
 bridge = Bridge(conf, send)
 
@@ -39,6 +45,7 @@ def telemetry(sid, data):
     bridge.publish_odometry(data)
     for i in range(len(msgs)):
         topic, data = msgs.pop(0)
+#        topic, data = msgs.popitem()
         sio.emit(topic, data=data, skip_sid=True)
 
 @sio.on('control')
