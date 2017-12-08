@@ -103,7 +103,7 @@ class TLDetector(object):
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
-        print("state2: ", state)
+        #print("state2: ", state)
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -114,18 +114,18 @@ class TLDetector(object):
         if self.state != state:
             self.state_count = 1
             self.state = state
-            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub if: %s',self.state_count, format(self.last_wp))
+            #rospy.loginfo('self.state_count %s,    upcoming_red_light_pub if: %s',self.state_count, format(self.last_wp))
         elif self.state_count >= STATE_COUNT_THRESHOLD:
             self.last_state = self.state
             #light_wp = light_wp if state == TrafficLight.RED else -1
             light_wp = -1 if state == TrafficLight.GREEN or state == TrafficLight.UNKNOWN else light_wp
             self.last_wp = light_wp
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub elif: %s',self.state_count, format(self.last_wp))
+            #rospy.loginfo('self.state_count %s,    upcoming_red_light_pub elif: %s',self.state_count, format(self.last_wp))
         else:
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
             self.state_count += 1
-            rospy.loginfo('self.state_count %s,    upcoming_red_light_pub else: %s',self.state_count, format(self.last_wp))
+            #rospy.loginfo('self.state_count %s,    upcoming_red_light_pub else: %s',self.state_count, format(self.last_wp))
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
@@ -193,7 +193,7 @@ class TLDetector(object):
         if light:
             #state = light.state #Comment once classifier works
             state = self.get_light_state(light) #Uncomment once classifier works
-            print("traffic light state: ", state)
+            #print("traffic light state: ", state)
             return light_wp, state
         
 

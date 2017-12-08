@@ -100,7 +100,7 @@ class TLClassifier(object):
 
         img_exp = np.expand_dims(image, axis=0)
 
-        time0 = time.time()
+        #time0 = time.time()
 
         #img_dir = os.path.abspath(os.path.join(os.getcwd(),"images"))
         #img_name = os.path.join(img_dir, "%12i.jpg" % time0)
@@ -114,9 +114,9 @@ class TLClassifier(object):
                 self.detection_classes, self.num_detections],
                 feed_dict={self.image_tensor: img_exp})
 
-        time1 = time.time()
+        #time1 = time.time()
 
-        print("Time in milliseconds", (time1 - time0) * 1000)
+        #print("Time in milliseconds", (time1 - time0) * 1000)
 
         boxes = np.squeeze(boxes)
         scores = np.squeeze(scores)
@@ -155,9 +155,9 @@ class TLClassifier(object):
         else:
             self.current_light = TrafficLight.UNKNOWN
 
-        print('Box #: {}'.format(max_id))
-        print('{}'.format(max_name))
-        print('{}'.format(max_score))
+        #print('Box #: {}'.format(max_id))
+        #print('{}'.format(max_name))
+        #print('{}'.format(max_score))
 
         return self.current_light
 
