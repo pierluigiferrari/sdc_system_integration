@@ -73,7 +73,7 @@ class Controller(object):
             tb = self.tb_lpf.filt(tb)
             #rospy.loginfo("throttle/braking PID value: %s, target_linear_velocity: %s, current_linear_velocity: %s", tb, target_linear_velocity, current_linear_velocity)
             # Scale it.
-            if target_linear_velocity== 0.0 and current_linear_velocity < 1.0:
+            if target_linear_velocity== 0.0 and current_linear_velocity < 2.0:
                 brake = abs(self.braking_constant * 5.0)
                 throttle = 0
             elif tb < 0: # We're braking.
