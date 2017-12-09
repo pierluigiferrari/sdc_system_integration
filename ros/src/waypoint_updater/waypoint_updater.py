@@ -40,14 +40,14 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
-        self.rate = rospy.Rate(40)
+        self.rate = rospy.Rate(50)
 
         self.ego_pose = None
 
         self.waypoints = None
         self.next_waypoint = None
 
-        self.tl_waypoint = 0
+        self.tl_waypoint = -1
         self.ego_vel = None
 
         self.stopping = False
@@ -65,13 +65,12 @@ class WaypointUpdater(object):
             rospy.loginfo("self.stopping: %s, self.ego_vel: %s, tl_waypoint:  %s", self.stopping,self.ego_vel, self.tl_waypoint)
             self.next_waypoint = self.get_next_waypoint()
             rospy.loginfo("dist1: %s, nr_wps: %s", self.get_distance(self.next_waypoint, self.tl_waypoint),(self.tl_waypoint - self.next_waypoint))
-            rospy.loginfo("self.next_waypoint: %s", self.next_waypoint)
             vel = self.ego_vel
             if self.tl_waypoint > 0:
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
                 #If traffic light is red and less than 40m ahead, slowdown and stop
-                
-                if self.stopping == False and 15 < dist1 < 40:
+
+                if self.stopping == False and 5 < dist1 < 40:
                     self.stopping = True
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
@@ -93,26 +92,33 @@ class WaypointUpdater(object):
                     speedup = 0.35
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+nr_wps_1]:
                         vel +=speedup
-#                        vel = 10
+                        #vel = 10
                         wp.twist.twist.linear.x = vel
                     for wp in self.waypoints.waypoints[self.next_waypoint+nr_wps_1+1:self.tl_waypoint]:
                         vel -=speedup
-#                       vel = 0
+                        #vel = 0
                         if vel < .1:
                             vel = 0
-                        wp.twist.twist.linear.x = vel 
+                        wp.twist.twist.linear.x = vel
                     for wp in self.waypoints.waypoints[self.tl_waypoint-1:self.tl_waypoint]:
                         vel =0
-                        wp.twist.twist.linear.x = vel                    
-
+                        wp.twist.twist.linear.x = vel
 
             #Traffic light is green, go back to reference velocity
             if self.tl_waypoint < 0 and self.stopping == True:
                 self.stopping = False
                 for wp in range(len(self.waypoints.waypoints)):
                     self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel[wp])
+                    
             final_waypoints = Lane()
-            final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
+            if self.next_waypoint+LOOKAHEAD_WPS <= len(self.waypoints.waypoints):
+                final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
+                rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), self.next_waypoint+LOOKAHEAD_WPS)
+            else:
+                final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:len(self.waypoints.waypoints)]
+                num_waypoints_left = (self.next_waypoint + LOOKAHEAD_WPS) % len(self.waypoints.waypoints)
+                final_waypoints.waypoints += self.waypoints.waypoints[0:num_waypoints_left]
+                rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), num_waypoints_left)
             self.final_waypoints_pub.publish(final_waypoints)
             self.rate.sleep()
 
@@ -123,8 +129,6 @@ class WaypointUpdater(object):
         self.ego_pose = msg.pose
 
     def waypoints_cb(self, waypoints):
-        rospy.loginfo("waypoints dtype: %s", type(waypoints))
-        rospy.loginfo("waypoints.waypoints[0] dtype: %s", type(waypoints.waypoints[0]))
         self.waypoints = waypoints
         self.sub2.unregister()
 
