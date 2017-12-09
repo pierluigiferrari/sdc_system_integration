@@ -40,7 +40,7 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
-        self.rate = rospy.Rate(40)
+        self.rate = rospy.Rate(50)
 
         self.ego_pose = None
 
@@ -60,12 +60,12 @@ class WaypointUpdater(object):
         for wp in self.waypoints.waypoints:
             ref_vel.append(self.get_waypoint_velocity(wp))
 
-        
+
 
         # Publish the final waypoints.
         while not rospy.is_shutdown():
             #rospy.loginfo('self.stopping: %s, self.ego_vel: %s, tl_waypoint:  %s', self.stopping,self.ego_vel, self.tl_waypoint)
-            self.next_waypoint = self.get_next_waypoint()          
+            self.next_waypoint = self.get_next_waypoint()
             #rospy.loginfo('dist1: %s, nr_wps: %s', self.get_distance(self.next_waypoint, self.tl_waypoint),(self.tl_waypoint - self.next_waypoint))
             vel = self.ego_vel
             if self.tl_waypoint > 0:
@@ -111,7 +111,7 @@ class WaypointUpdater(object):
                 self.stopping = False
                 for wp in range(len(self.waypoints.waypoints)):
                     self.set_waypoint_velocity(self.waypoints.waypoints,wp,ref_vel[wp])
-                    
+
             final_waypoints = Lane()
             if self.next_waypoint+LOOKAHEAD_WPS <= len(self.waypoints.waypoints):
                 final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
@@ -129,7 +129,7 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         self.ego_pose = msg.pose
-        
+
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
         self.sub2.unregister()
@@ -211,7 +211,7 @@ class WaypointUpdater(object):
         return closestWaypoint_index;
     def get_next_waypoint(self):
 #        if self.next_waypoint is None: # If this is the first time we're computing the next waypoint, we have to iterate over all waypoints.
-#            closest_waypoint = self.get_closest_waypoint()            
+#            closest_waypoint = self.get_closest_waypoint()
 #        else:
 #            closest_waypoint = self.get_closest_waypoint(begin=self.next_waypoint, end=((self.next_waypoint + 100) % len(self.waypoints.waypoints)))
         closest_waypoint = self.ClosestWaypoint(self.ego_pose.position.x, self.ego_pose.position.y, self.waypoints.waypoints)
