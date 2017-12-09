@@ -27,7 +27,11 @@ class Controller(object):
         #self.tb_pid = PID(kp=0.4, ki=0.01, kd=0.01, mn=-1.0, mx=accel_limit)
         self.tb_pid = PID(kp=0.7, ki=0.01, kd=0.01, mn=decel_limit, mx=accel_limit)
         # Low pass filter to smooth out throttle/braking actuations.
-        self.tb_lpf = LowPassFilter(0.2,1.0)
+        #self.tb_lpf = LowPassFilter(0.2,1.0)
+        self.tb_lpf = LowPassFilter(0.8)
+        # Low pass filter to smooth out steering commands.
+        #self.steer_lpf = LowPassFilter(0.2,1.0)
+        self.steer_lpf = LowPassFilter(0.5)
         # Constants that are relevant to computing the final throttle/brake value
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
@@ -86,6 +90,10 @@ class Controller(object):
             steer = self.yaw_controller.get_steering(linear_velocity=target_linear_velocity,
                                                      angular_velocity=target_angular_velocity,
                                                      current_velocity=current_linear_velocity)
+            if (brake > 0) and (current_linear_velocity < 3.0): # Smooth out steering values at low velocities.
+                steer = self.steer_lpf.filt(steer)
+            else:
+                self.steer_lpf.ready = False
 
             return throttle, brake, steer
 
