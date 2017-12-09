@@ -40,7 +40,7 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
-        self.rate = rospy.Rate(50)
+        self.rate = rospy.Rate(40)
 
         self.ego_pose = None
 
@@ -60,11 +60,13 @@ class WaypointUpdater(object):
         for wp in self.waypoints.waypoints:
             ref_vel.append(self.get_waypoint_velocity(wp))
 
+        
+
         # Publish the final waypoints.
         while not rospy.is_shutdown():
-            rospy.loginfo("self.stopping: %s, self.ego_vel: %s, tl_waypoint:  %s", self.stopping,self.ego_vel, self.tl_waypoint)
-            self.next_waypoint = self.get_next_waypoint()
-            rospy.loginfo("dist1: %s, nr_wps: %s", self.get_distance(self.next_waypoint, self.tl_waypoint),(self.tl_waypoint - self.next_waypoint))
+            #rospy.loginfo('self.stopping: %s, self.ego_vel: %s, tl_waypoint:  %s', self.stopping,self.ego_vel, self.tl_waypoint)
+            self.next_waypoint = self.get_next_waypoint()          
+            #rospy.loginfo('dist1: %s, nr_wps: %s', self.get_distance(self.next_waypoint, self.tl_waypoint),(self.tl_waypoint - self.next_waypoint))
             vel = self.ego_vel
             if self.tl_waypoint > 0:
                 dist1 = self.get_distance(self.next_waypoint, self.tl_waypoint)
@@ -74,7 +76,7 @@ class WaypointUpdater(object):
                     self.stopping = True
                     nr_wps = self.tl_waypoint - self.next_waypoint
                     if nr_wps > 0: #to avoid division by zero
-                        slowdown = vel / float(nr_wps)
+                        slowdown = vel / float(nr_wps-4)
                     else:
                         slowdown = 0
                     for wp in self.waypoints.waypoints[self.next_waypoint:self.tl_waypoint]:
@@ -100,7 +102,7 @@ class WaypointUpdater(object):
                         if vel < .1:
                             vel = 0
                         wp.twist.twist.linear.x = vel
-                    for wp in self.waypoints.waypoints[self.tl_waypoint-1:self.tl_waypoint]:
+                    for wp in self.waypoints.waypoints[self.tl_waypoint-3:self.tl_waypoint]:
                         vel =0
                         wp.twist.twist.linear.x = vel
 
@@ -113,12 +115,12 @@ class WaypointUpdater(object):
             final_waypoints = Lane()
             if self.next_waypoint+LOOKAHEAD_WPS <= len(self.waypoints.waypoints):
                 final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:self.next_waypoint+LOOKAHEAD_WPS]
-                rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), self.next_waypoint+LOOKAHEAD_WPS)
+                #rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), self.next_waypoint+LOOKAHEAD_WPS)
             else:
                 final_waypoints.waypoints = self.waypoints.waypoints[self.next_waypoint:len(self.waypoints.waypoints)]
                 num_waypoints_left = (self.next_waypoint + LOOKAHEAD_WPS) % len(self.waypoints.waypoints)
                 final_waypoints.waypoints += self.waypoints.waypoints[0:num_waypoints_left]
-                rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), num_waypoints_left)
+                #rospy.loginfo('num pub wps: %s, next wp: %s, next wp vel: %s, last wp: %s', len(final_waypoints.waypoints), self.next_waypoint, self.get_waypoint_velocity(self.waypoints.waypoints[self.next_waypoint]), num_waypoints_left)
             self.final_waypoints_pub.publish(final_waypoints)
             self.rate.sleep()
 
@@ -127,7 +129,7 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         self.ego_pose = msg.pose
-
+        
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
         self.sub2.unregister()
@@ -188,11 +190,31 @@ class WaypointUpdater(object):
                     closest_waypoint_dist = dist
         return closest_waypoint
 
+###################################################################
+    def distance_between_points(self, x1, y1, x2, y2):
+        return math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1))
+
+    def ClosestWaypoint(self, x, y, waypoints):
+
+        closestLen = 10000000; #large number
+        closestWaypoint_index = 0
+
+        for i in range(len(waypoints)):
+            map_x = waypoints[i].pose.pose.position.x;
+            map_y = waypoints[i].pose.pose.position.y;
+            dist = self.distance_between_points(x,y,map_x,map_y)
+
+            if(dist < closestLen):
+                closestLen = dist;
+                closestWaypoint_index = i;
+
+        return closestWaypoint_index;
     def get_next_waypoint(self):
-        if self.next_waypoint is None: # If this is the first time we're computing the next waypoint, we have to iterate over all waypoints.
-            closest_waypoint = self.get_closest_waypoint()
-        else:
-            closest_waypoint = self.get_closest_waypoint(begin=self.next_waypoint, end=((self.next_waypoint + 100) % len(self.waypoints.waypoints)))
+#        if self.next_waypoint is None: # If this is the first time we're computing the next waypoint, we have to iterate over all waypoints.
+#            closest_waypoint = self.get_closest_waypoint()            
+#        else:
+#            closest_waypoint = self.get_closest_waypoint(begin=self.next_waypoint, end=((self.next_waypoint + 100) % len(self.waypoints.waypoints)))
+        closest_waypoint = self.ClosestWaypoint(self.ego_pose.position.x, self.ego_pose.position.y, self.waypoints.waypoints)
         # Check whether the closest waypoint is ahead of the ego car or behind it.
         if self.is_ahead(closest_waypoint):
             # If it is ahead, that's our guy.
@@ -203,6 +225,7 @@ class WaypointUpdater(object):
                 return closest_waypoint + 1
             else: # Wrap around after the last waypoint.
                 return 0
+##################################################################
 
     def is_ahead(self, index):
         '''
